@@ -5,6 +5,9 @@ const nextConfig = {
   reactStrictMode: true,
 
   basePath: '/activity',
+  env: {
+    MAIN_APP_ORIGIN: process.env.MAIN_APP_ORIGIN || 'http://localhost:3000',
+  },
 
   transpilePackages: [
     '@miro/micro-core',

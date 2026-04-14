@@ -1,124 +1,127 @@
 # yiFrame
 
-基于 Next.js Pages Router 的路由聚合型微前端示例。
+一个基于 Next.js Pages Router 的路由聚合型微前端基础框架。
 
-这套实现保留了：
+当前版本的重点不是继续推翻架构，而是把主链路闭环之后的工程化能力补齐：
+
+- 单点 registry 继续收敛为元数据中心
+- 支持最小可用的子应用脚手架命令
+- 开发环境下补上跨应用导航兜底
+
+## 当前定位
+
+这套框架保留了这些前提：
 
 - 主应用统一入口
 - 子应用独立 Next.js app
-- SSR 支持
-- 跨应用共享基础能力
+- Pages Router + SSR
+- 共享状态、共享 UI、事件总线以包的形式复用
 
-这套实现不做：
+这套框架不做：
 
 - iframe
 - qiankun / wujie / single-spa
-- 运行时 JS 沙箱
+- 运行时沙箱容器
 - Module Federation 主导的页面拼装
 
----
+## 已完成的主链路
 
-## 当前状态
+当前已经闭环并可验证的能力：
 
-第三轮收口后，框架的关键特征是：
-
-1. app 注册只有一份源数据：`packages/micro-core/src/apps.config.json`
-2. 主应用代理只有一个入口：`apps/main/server.js`
-3. 页面、`_next/static`、`_next/data`、`public` 资源都遵守同一条路径契约
-4. `MicroLink` / `useMicroRouter` 支持 `mode: 'auto' | 'spa' | 'reload'`
-5. 共享状态改为配置表驱动，并补了配置校验
-6. event-bus 去掉 DOM `CustomEvent`，补了最小自动化测试
-7. smoke-check 现在覆盖 HTML、chunk、data、public、fallback
-
----
-
-## 路径契约
-
-对外统一暴露路径：
-
-- main 页面：`/`
-- activity 页面：`/activity/**`
-- account 页面：`/account/**`
-
-统一代理路径：
-
-- 页面 HTML：`/{basePath}/...`
-- chunk：`/{basePath}/_next/static/...`
-- data：`/{basePath}/_next/data/{buildId}/...`
-- public：`/{basePath}/...`
-
-兼容旧路径：
-
-- `/_apps/{app}/...`
-- `/_next/data/{buildId}/{app}/...`
-
-这两类旧路径会在主应用代理层先被规范化，再进入统一分发逻辑。
-
----
+1. 主应用统一代理页面 HTML、`_next/static`、`_next/data`、`public`
+2. app 注册集中在一份源数据里
+3. `MicroLink` / `useMicroRouter` 支持 `mode: 'auto' | 'spa' | 'reload'`
+4. shared-state 配置表驱动，event-bus 有最小测试保护
+5. smoke-check 覆盖 HTML、chunk、data、public、fallback
 
 ## 目录
 
 ```text
 apps/
   main/
-    server.js
-    server/
-      app-resolution.js
-      fallback-response.js
-      logging.js
-      path-normalization.js
-      proxy-request.js
-      request-context.js
-    public/
-      platform-owner.txt
-    src/pages/
-      _app.tsx
-      _document.tsx
-      404.tsx
-      index.tsx
   activity/
-    public/
-      platform-owner.txt
-    src/pages/
-      _app.tsx
-      _document.tsx
-      index.tsx
-      list.tsx
   account/
-    src/pages/
-      _app.tsx
-      _document.tsx
-      index.tsx
-      profile.tsx
-      settings.tsx
 
 packages/
-  micro-core/src/
-    apps.config.json
-    app-registry.ts
-    navigation.ts
-    link.tsx
-    router.ts
-    shared-state.ts
-    event-bus.ts
-    constants.ts
-  shared-state/src/
-    provider.tsx
-    hooks.ts
-    ssr.ts
-  shared-ui/src/
-    Header.tsx
-    Footer.tsx
-    Button.tsx
+  micro-core/
+  shared-state/
+  shared-ui/
+  shared-utils/
 
 scripts/
+  create-app.mjs
   smoke-check.mjs
+  registry/
+    validate.ts
+    report.ts
   tests/
-    event-bus.test.ts
-    shared-state.test.ts
 ```
 
----
+## 单点 registry
+
+唯一 app 源数据：
+
+[apps.config.json](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/apps.config.json)
+
+当前每个 app 至少包含这些字段：
+
+- `name`
+- `displayName`
+- `basePath`
+- `enabled`
+- `navigation`
+- `targetEnvVar`
+- `defaultTarget`
+
+轻量能力声明：
+
+- `standaloneAccessible`
+- `devFallbackToMainOrigin`
+- `smokeEnabled`
+- `description`
+
+### registry 现在自动提供什么
+
+以下衍生信息不再手工维护，而是直接从 registry 计算：
+
+- Header 导航数据
+- client-side matcher 数据
+- 环境变量模板
+- 新 app 接入说明片段
+- smoke app 列表
+
+相关实现：
+
+- [app-registry.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/app-registry.ts)
+- [validate.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/scripts/registry/validate.ts)
+- [report.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/scripts/registry/report.ts)
+
+运行校验：
+
+```bash
+npm run registry:validate
+```
+
+查看导出结果：
+
+```bash
+npm run registry:report
+```
+
+## 路径契约
+
+对外统一使用：
+
+- main: `/`
+- activity: `/activity/**`
+- account: `/account/**`
+
+代理层统一处理：
+
+- 页面 HTML：`/{basePath}/...`
+- chunk：`/{basePath}/_next/static/...`
+- data：`/{basePath}/_next/data/{buildId}/...`
+- public：`/{basePath}/...`
 
 ## 本地启动
 
@@ -128,7 +131,7 @@ scripts/
 npm install
 ```
 
-启动全部服务：
+分别启动：
 
 ```bash
 npm run dev:activity
@@ -148,30 +151,118 @@ npm run dev:all
 - activity: `3001`
 - account: `3002`
 
----
+## 新增 app 脚手架
+
+创建新子应用：
+
+```bash
+npm run create:app trade
+```
+
+这个命令会自动完成：
+
+1. 生成 `apps/trade/`
+2. 写入 `package.json`
+3. 写入 `next.config.mjs`
+4. 写入 `tsconfig.json` 与 `next-env.d.ts`
+5. 写入 `src/pages/_app.tsx`
+6. 写入 `src/pages/index.tsx`
+7. 写入 `public/platform-owner.txt`
+8. 追加 registry 条目
+9. 追加根脚本 `dev:trade`
+
+生成后的默认约定：
+
+- `basePath`: `/trade`
+- env: `MICRO_APP_TRADE_URL`
+- 默认目标地址：脚本会按当前 registry 端口继续递增
+
+创建完成后还需要做的事：
+
+```bash
+export MICRO_APP_TRADE_URL=http://localhost:3003
+export MAIN_APP_ORIGIN=http://localhost:3000
+npm run dev:trade
+npm run dev:main
+```
+
+脚手架脚本：
+
+[create-app.mjs](/Users/xiaofei/Downloads/work/Study/yiFrame/scripts/create-app.mjs)
+
+## 开发态跨应用导航兜底
+
+背景：当你直连子应用，比如 `http://localhost:3001/activity`，再点击平台级导航里的主页或其他应用，如果仍然沿用当前 origin，就会跳到 `http://localhost:3001/` 这类错误地址。
+
+现在的处理方式：
+
+- 仅在开发环境生效
+- 仅在跨应用导航时生效
+- 同应用内部导航仍然走原来的逻辑
+- 生产环境语义保持不变
+
+配置方式：
+
+```bash
+export MAIN_APP_ORIGIN=http://localhost:3000
+```
+
+这个变量会注入到各个 Next app 的客户端环境中，供导航层读取。
+
+相关实现：
+
+- [navigation.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/navigation.ts)
+- [link.tsx](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/link.tsx)
+- [router.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/router.ts)
+
+### 如何验证
+
+1. 启动 `main` 与 `activity`
+2. 直连打开 `http://localhost:3001/activity`
+3. 点击 Header 中的“主页”或“Account”
+4. 预期跳到 `http://localhost:3000/` 或 `http://localhost:3000/account/...`
+
+这个兜底同时覆盖：
+
+- `MicroLink`
+- `useMicroRouter.push`
+- `useMicroRouter.replace`
 
 ## 本地验证
 
-### 1. 基础冒烟
+### registry
+
+```bash
+npm run registry:validate
+npm run registry:report
+```
+
+### shared-state / event-bus
+
+```bash
+npm run test:core
+```
+
+### 主链路 smoke-check
 
 ```bash
 npm run smoke:local
 ```
 
-当前默认会验证：
+默认覆盖：
 
 - main HTML
-- main public 资源
+- main public
 - activity HTML
 - activity chunk
 - activity data
-- activity public 资源（经主应用）
+- activity public（经 main）
 - account HTML
 - account chunk
 - account data
-- activity public 资源（子应用直连）
+- activity public（子应用直连）
 
-### 2. fallback
+### fallback
 
 先停掉 `account`，再执行：
 
@@ -181,268 +272,27 @@ SKIP_ACCOUNT_CHECKS=true CHECK_FALLBACK_PATH=/account/profile npm run smoke:loca
 
 预期：
 
-- `/account/profile` 返回 `502`
+- 返回 `502`
 - 页面包含 `Micro App Unavailable`
 
-### 3. 核心自动化测试
+## 新增一个 app 现在还需要手工做什么
 
-```bash
-npm run test:event-bus
-npm run test:shared-state
-```
+已经自动化的部分：
 
-或一起执行：
+- app 目录骨架
+- registry 注册
+- 默认端口与 env var 命名
+- 根脚本 `dev:<app>`
 
-```bash
-npm run test:core
-```
+仍然需要手工补的部分：
 
----
+- 业务页面与接口
+- 子应用自己的 SSR 页面
+- 是否加入更细粒度 smoke 场景
+- 部署环境里的真实目标地址
 
-## 单点注册
+## 当前仍保留的限制
 
-唯一 registry：
-
-[packages/micro-core/src/apps.config.json](/Users/xiaofei/Downloads/work/Study/Miro/packages/micro-core/src/apps.config.json)
-
-当前字段：
-
-- `name`
-- `displayName`
-- `basePath`
-- `enabled`
-- `navigation`
-- `targetEnvVar`
-- `defaultTarget`
-
-由这份配置自动生成：
-
-- 主应用 runtime app map
-- client-side matcher
-- Header 导航项
-- 路由归属与路径契约
-
----
-
-## 代理结构
-
-主入口：
-
-[apps/main/server.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server.js)
-
-模块拆分：
-
-- [request-context.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server/request-context.js)
-  - 生成 `traceId`
-  - 注入请求上下文
-- [app-resolution.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server/app-resolution.js)
-  - 构建 runtime registry
-  - 根据路径识别目标 app
-- [path-normalization.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server/path-normalization.js)
-  - 规范化旧路径
-  - 提取 pathname
-- [proxy-request.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server/proxy-request.js)
-  - 执行代理
-  - 注入 `x-miro-trace-id`
-  - 注入 `x-miro-source-app: main`
-- [fallback-response.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server/fallback-response.js)
-  - 统一 502 输出
-- [logging.js](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/server/logging.js)
-  - 统一日志开关
-
-### 请求头
-
-所有代理到子应用的请求都会注入：
-
-- `x-miro-trace-id`
-- `x-miro-source-app: main`
-
-日志开关：
-
-- `PROXY_ENABLE_LOGGING=true|false`
-
-超时：
-
-- `PROXY_TIMEOUT`
-
----
-
-## 导航
-
-核心文件：
-
-- [navigation.ts](/Users/xiaofei/Downloads/work/Study/Miro/packages/micro-core/src/navigation.ts)
-- [link.tsx](/Users/xiaofei/Downloads/work/Study/Miro/packages/micro-core/src/link.tsx)
-- [router.ts](/Users/xiaofei/Downloads/work/Study/Miro/packages/micro-core/src/router.ts)
-
-支持：
-
-- `mode="auto" | "spa" | "reload"`
-- query / hash / locale 解析
-- `_blank`
-- meta / ctrl / shift / 中键点击
-- main app `/` 归属识别
-
-默认策略：
-
-- 同 app：SPA
-- 跨 app：full reload
-
----
-
-## 共享状态
-
-核心文件：
-
-- [packages/micro-core/src/shared-state.ts](/Users/xiaofei/Downloads/work/Study/Miro/packages/micro-core/src/shared-state.ts)
-- [packages/shared-state/src/provider.tsx](/Users/xiaofei/Downloads/work/Study/Miro/packages/shared-state/src/provider.tsx)
-- [packages/shared-state/src/ssr.ts](/Users/xiaofei/Downloads/work/Study/Miro/packages/shared-state/src/ssr.ts)
-
-当前示例 key：
-
-- `locale`
-- `theme`
-- `currencyRates`
-- `assetVisibility`
-
-每个 key 都声明：
-
-- `storageType`
-- `sourceOfTruth`
-- `ssrReadable`
-- `crossTabSync`
-- `defaultValue`
-- `serialize`
-- `deserialize`
-
-### SSR 注入策略
-
-这轮已经移除 `_app.tsx` 里的 `App.getInitialProps`。
-
-原因：
-
-- 会让 Pages Router 退出 Automatic Static Optimization
-- 静态页会被强制变成按请求渲染
-
-现在的做法：
-
-- 纯静态页：不做统一 SSR 注入，服务端输出默认值，客户端再从 cookie / localStorage hydrate
-- 需要 SSR 快照的页面：通过 `withSharedStateServerSideProps(...)` 显式接入
-
-示例：
-
-```ts
-import type { GetServerSideProps } from 'next';
-import { withSharedStateServerSideProps } from '@miro/shared-state';
-
-export const getServerSideProps: GetServerSideProps = withSharedStateServerSideProps(
-  async () => {
-    return {
-      props: {
-        serverTime: new Date().toISOString(),
-      },
-    };
-  }
-);
-```
-
-这个方案的含义是：
-
-- 保住静态页的 ASO
-- 已经 SSR 的页面继续拿到共享状态快照
-- 代价是：静态页如果展示了共享状态值，首屏会先看到默认值，再在 hydration 后更新
-
----
-
-## 事件总线
-
-核心文件：
-
-- [packages/micro-core/src/event-bus.ts](/Users/xiaofei/Downloads/work/Study/Miro/packages/micro-core/src/event-bus.ts)
-- [packages/shared-state/src/hooks.ts](/Users/xiaofei/Downloads/work/Study/Miro/packages/shared-state/src/hooks.ts)
-
-策略：
-
-- same-tab：内存 listener
-- cross-tab：`BroadcastChannel`
-- fallback：`storage` event
-
-当前测试已覆盖：
-
-- same-tab 只触发一次
-- cross-tab 只触发一次
-- unsubscribe 后不再触发
-- destroy 后清 listener 和 bridge
-- 无 `BroadcastChannel` 时 fallback 生效
-
----
-
-## public 资源
-
-当前样例：
-
-- main: [apps/main/public/platform-owner.txt](/Users/xiaofei/Downloads/work/Study/Miro/apps/main/public/platform-owner.txt)
-- activity: [apps/activity/public/platform-owner.txt](/Users/xiaofei/Downloads/work/Study/Miro/apps/activity/public/platform-owner.txt)
-
-访问路径：
-
-- main 资源：`http://localhost:3000/platform-owner.txt`
-- activity 经主应用：`http://localhost:3000/activity/platform-owner.txt`
-- activity 直连：`http://localhost:3001/activity/platform-owner.txt`
-
-这也说明了当前契约下不会和 main 的同名 public 资源冲突：
-
-- main 资源在根路径
-- 子应用资源在各自 `basePath` 下
-
----
-
-## 新增一个 app
-
-以 `trade` 为例：
-
-1. 在 `apps.config.json` 增加 `trade`
-2. 新建 `apps/trade`
-3. 设置 `basePath: '/trade'`
-4. 在主应用环境变量里配置 `MICRO_APP_TRADE_URL`
-
-如果某个 `trade` 页面需要 SSR 共享状态快照，再按需使用：
-
-```ts
-withSharedStateServerSideProps(...)
-```
-
-不需要改：
-
-- server 路由表
-- Header 导航
-- client matcher
-- rewrites
-
----
-
-## 环境变量
-
-常用变量：
-
-- `PORT`
-- `MICRO_APP_ACTIVITY_URL`
-- `MICRO_APP_ACCOUNT_URL`
-- `PROXY_TIMEOUT`
-- `PROXY_ENABLE_LOGGING`
-- `NEXT_PUBLIC_APP_NAME`
-
----
-
-## 已验证链路
-
-这份 README 只记录已经跑过的内容：
-
-- HTML 代理
-- chunk 代理
-- data 代理
-- public 资源代理
-- fallback 502
-- event-bus 自动化测试
-- shared-state 自动化测试
-- `App.getInitialProps` 移除后的 ASO 恢复
+1. `create:app` 目前是最小脚手架，不会顺手生成完整业务页、测试和部署配置。
+2. registry 的自动导出目前以 runtime 函数和命令行报告为主，还没有额外落盘成静态制品。
+3. 开发态跨应用导航兜底依赖 `MAIN_APP_ORIGIN`，如果本地没配，子应用直连时仍会回到当前 origin。

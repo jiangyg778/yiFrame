@@ -1,23 +1,31 @@
 export type {
   AppConfigEntry,
+  AppOnboardingEntry,
   AppName,
+  ClientMatcherEntry,
   MicroAppEntry,
   MicroRegistry,
   MicroAppRouteContract,
   NavigationItem,
+  SmokeTargetEntry,
 } from './registry';
 
 export {
   createAppRegistry,
   createClientRegistry,
   createMainRewrites,
+  getAppOnboardingEntries,
   getAppByName,
   getAppConfigEntries,
+  getClientMatcherEntries,
+  getRegistryEnvTemplate,
   getNavigationItems,
+  getSmokeTargetEntries,
   matchApp,
   isPathOwnedBy,
   toInternalAppPath,
   toPublicAppPath,
+  validateAppConfigEntries,
 } from './registry';
 
 export { MicroLink, MicroLinkProvider, MicroLinkContext } from './link';

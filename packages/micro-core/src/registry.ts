@@ -3,23 +3,31 @@ import { matchAppByPath } from './app-registry';
 
 export type {
   AppConfigEntry,
+  AppOnboardingEntry,
   AppName,
+  ClientMatcherEntry,
   MicroAppEntry,
   MicroRegistry,
   MicroAppRouteContract,
   NavigationItem,
+  SmokeTargetEntry,
 } from './app-registry';
 
 export {
   createAppRegistry,
   createClientRegistry,
   createMainRewrites,
+  getAppOnboardingEntries,
   getAppByName,
   getAppConfigEntries,
+  getClientMatcherEntries,
+  getRegistryEnvTemplate,
   getNavigationItems,
+  getSmokeTargetEntries,
   matchAppByPath as matchApp,
   toInternalAppPath,
   toPublicAppPath,
+  validateAppConfigEntries,
 } from './app-registry';
 
 export function isPathOwnedBy(

@@ -1,6 +1,12 @@
 import { getAppByName, matchApp, toInternalAppPath, toPublicAppPath } from './registry';
 import type { MicroAppEntry, MicroRegistry } from './registry';
 
+declare const process:
+  | {
+      env?: Record<string, string | undefined>;
+    }
+  | undefined;
+
 export type NavigationMode = 'auto' | 'spa' | 'reload';
 
 export interface NavigationContext {
@@ -30,6 +36,25 @@ function getNavigationOrigin(): string {
     return window.location.origin;
   }
   return 'http://miro.local';
+}
+
+function isDevelopmentRuntime(): boolean {
+  return process?.env?.NODE_ENV !== 'production';
+}
+
+function getMainAppOrigin(): string | undefined {
+  const configuredOrigin =
+    process?.env?.MAIN_APP_ORIGIN ?? process?.env?.NEXT_PUBLIC_MAIN_APP_ORIGIN;
+
+  if (!configuredOrigin) {
+    return undefined;
+  }
+
+  try {
+    return new URL(configuredOrigin).origin;
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeCurrentPathname(currentPathname?: string): string {
@@ -122,8 +147,20 @@ export function resolveNavigationTarget(
   const activeLocalePrefix =
     localePrefix || (typeof context.locale === 'string' ? `/${context.locale}` : '');
   const localizedPathname = withLocalePrefix(publicPathname, activeLocalePrefix).replace(/\/{2,}/g, '/');
+  const mainAppOrigin = getMainAppOrigin();
+  const pathWithQueryAndHash = `${localizedPathname}${parsedUrl.search}${parsedUrl.hash}`;
+  const shouldUseDevMainOriginFallback =
+    isDevelopmentRuntime() &&
+    Boolean(mainAppOrigin) &&
+    Boolean(currentApp?.devFallbackToMainOrigin) &&
+    Boolean(effectiveApp) &&
+    Boolean(currentApp) &&
+    !isSameApp &&
+    navigationOrigin !== mainAppOrigin;
 
-  const publicHref = `${localizedPathname}${parsedUrl.search}${parsedUrl.hash}`;
+  const publicHref = shouldUseDevMainOriginFallback
+    ? new URL(pathWithQueryAndHash, `${mainAppOrigin}/`).toString()
+    : pathWithQueryAndHash;
   const internalHref = effectiveApp
     ? `${toInternalAppPath(effectiveApp, publicPathname)}${parsedUrl.search}${parsedUrl.hash}`
     : publicHref;

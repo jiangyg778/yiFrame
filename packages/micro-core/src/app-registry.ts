@@ -14,6 +14,10 @@ export interface AppConfigEntry {
   basePath: string;
   enabled: boolean;
   navigation: boolean;
+  standaloneAccessible?: boolean;
+  devFallbackToMainOrigin?: boolean;
+  smokeEnabled?: boolean;
+  description?: string;
   targetEnvVar?: string;
   defaultTarget?: string;
 }
@@ -40,6 +44,29 @@ export interface NavigationItem {
   href: string;
 }
 
+export interface ClientMatcherEntry {
+  name: string;
+  basePath: string;
+  isMainApp: boolean;
+  devFallbackToMainOrigin: boolean;
+}
+
+export interface AppOnboardingEntry {
+  name: string;
+  displayName: string;
+  basePath: string;
+  envVar: string | null;
+  defaultTarget: string | null;
+  standaloneAccessible: boolean;
+  description: string;
+}
+
+export interface SmokeTargetEntry {
+  name: string;
+  displayName: string;
+  basePath: string;
+}
+
 function getRuntimeEnv(): Record<string, string | undefined> {
   if (typeof process !== 'undefined' && process?.env) {
     return process.env;
@@ -52,6 +79,23 @@ function normalizeBasePath(basePath: string): string {
   if (!basePath || basePath === '/') return '/';
   const normalized = basePath.startsWith('/') ? basePath : `/${basePath}`;
   return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isValidBoolean(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
+function isValidUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function isConflictingPrefix(left: string, right: string): boolean {
@@ -67,12 +111,68 @@ function createRouteContract(basePath: string): MicroAppRouteContract {
   };
 }
 
-function validateConfig(entries: AppConfigEntry[]): void {
+export function validateAppConfigEntries(entries: AppConfigEntry[]): void {
   const nameSet = new Set<string>();
   const pathSet = new Set<string>();
 
   for (const entry of entries) {
     const normalizedBasePath = normalizeBasePath(entry.basePath);
+
+    if (!isNonEmptyString(entry.name)) {
+      throw new Error('[Miro] App name is required.');
+    }
+    if (!isNonEmptyString(entry.displayName)) {
+      throw new Error(`[Miro] displayName is required for app "${entry.name}".`);
+    }
+    if (!normalizedBasePath.startsWith('/')) {
+      throw new Error(`[Miro] basePath must start with "/": ${entry.basePath}`);
+    }
+    if (!isValidBoolean(entry.enabled)) {
+      throw new Error(`[Miro] enabled must be boolean for app "${entry.name}".`);
+    }
+    if (!isValidBoolean(entry.navigation)) {
+      throw new Error(`[Miro] navigation must be boolean for app "${entry.name}".`);
+    }
+    if (
+      entry.standaloneAccessible !== undefined &&
+      !isValidBoolean(entry.standaloneAccessible)
+    ) {
+      throw new Error(
+        `[Miro] standaloneAccessible must be boolean for app "${entry.name}".`
+      );
+    }
+    if (
+      entry.devFallbackToMainOrigin !== undefined &&
+      !isValidBoolean(entry.devFallbackToMainOrigin)
+    ) {
+      throw new Error(
+        `[Miro] devFallbackToMainOrigin must be boolean for app "${entry.name}".`
+      );
+    }
+    if (entry.smokeEnabled !== undefined && !isValidBoolean(entry.smokeEnabled)) {
+      throw new Error(`[Miro] smokeEnabled must be boolean for app "${entry.name}".`);
+    }
+    if (entry.description !== undefined && !isNonEmptyString(entry.description)) {
+      throw new Error(`[Miro] description must be non-empty for app "${entry.name}".`);
+    }
+
+    if (entry.name === 'main') {
+      if (entry.targetEnvVar || entry.defaultTarget) {
+        throw new Error('[Miro] Main app cannot define targetEnvVar/defaultTarget.');
+      }
+    } else if (entry.enabled) {
+      if (!isNonEmptyString(entry.targetEnvVar)) {
+        throw new Error(`[Miro] targetEnvVar is required for app "${entry.name}".`);
+      }
+      if (!/^[A-Z][A-Z0-9_]*$/.test(entry.targetEnvVar)) {
+        throw new Error(
+          `[Miro] targetEnvVar must be uppercase snake case for app "${entry.name}".`
+        );
+      }
+      if (entry.defaultTarget && !isValidUrl(entry.defaultTarget)) {
+        throw new Error(`[Miro] defaultTarget must be a valid URL for app "${entry.name}".`);
+      }
+    }
 
     if (nameSet.has(entry.name)) {
       throw new Error(`[Miro] Duplicate app name detected: ${entry.name}`);
@@ -110,10 +210,16 @@ function resolveTarget(entry: AppConfigEntry, env: Record<string, string | undef
 export function getAppConfigEntries(): AppConfigEntry[] {
   const entries = (appConfig as AppConfigEntry[]).map((entry) => ({
     ...entry,
+    displayName: entry.displayName?.trim(),
     basePath: normalizeBasePath(entry.basePath),
+    description: entry.description?.trim() || undefined,
+    standaloneAccessible: entry.standaloneAccessible ?? true,
+    devFallbackToMainOrigin:
+      entry.devFallbackToMainOrigin ?? entry.name !== 'main',
+    smokeEnabled: entry.smokeEnabled ?? entry.enabled,
   }));
 
-  validateConfig(entries);
+  validateAppConfigEntries(entries);
   return entries;
 }
 
@@ -148,6 +254,58 @@ export function getNavigationItems(registry: MicroRegistry): NavigationItem[] {
       name: app.name,
       displayName: app.displayName,
       href: app.basePath,
+    }));
+}
+
+export function getClientMatcherEntries(
+  registry: MicroRegistry = createClientRegistry()
+): ClientMatcherEntry[] {
+  return registry.apps.map((app) => ({
+    name: app.name,
+    basePath: app.basePath,
+    isMainApp: app.isMainApp,
+    devFallbackToMainOrigin: app.devFallbackToMainOrigin ?? false,
+  }));
+}
+
+export function getRegistryEnvTemplate(
+  entries: AppConfigEntry[] = getAppConfigEntries()
+): string {
+  const lines = ['MAIN_APP_ORIGIN=http://localhost:3000'];
+
+  for (const entry of entries) {
+    if (entry.name === 'main' || !entry.targetEnvVar) continue;
+    lines.push(`${entry.targetEnvVar}=${entry.defaultTarget ?? ''}`);
+  }
+
+  return lines.join('\n');
+}
+
+export function getAppOnboardingEntries(
+  entries: AppConfigEntry[] = getAppConfigEntries()
+): AppOnboardingEntry[] {
+  return entries
+    .filter((entry) => entry.name !== 'main')
+    .map((entry) => ({
+      name: entry.name,
+      displayName: entry.displayName,
+      basePath: entry.basePath,
+      envVar: entry.targetEnvVar ?? null,
+      defaultTarget: entry.defaultTarget ?? null,
+      standaloneAccessible: entry.standaloneAccessible ?? true,
+      description: entry.description ?? '',
+    }));
+}
+
+export function getSmokeTargetEntries(
+  entries: AppConfigEntry[] = getAppConfigEntries()
+): SmokeTargetEntry[] {
+  return entries
+    .filter((entry) => entry.enabled && entry.smokeEnabled && entry.name !== 'main')
+    .map((entry) => ({
+      name: entry.name,
+      displayName: entry.displayName,
+      basePath: entry.basePath,
     }));
 }
 

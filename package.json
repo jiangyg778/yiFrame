@@ -8,10 +8,13 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "create:app": "node scripts/create-app.mjs",
     "dev:main": "npm run dev --workspace=apps/main",
     "dev:activity": "npm run dev --workspace=apps/activity",
     "dev:account": "npm run dev --workspace=apps/account",
     "dev:all": "turbo dev --parallel",
+    "registry:validate": "tsx scripts/registry/validate.ts",
+    "registry:report": "tsx scripts/registry/report.ts",
     "smoke:local": "node scripts/smoke-check.mjs",
     "test:event-bus": "tsx --test scripts/tests/event-bus.test.ts",
     "test:shared-state": "tsx --test scripts/tests/shared-state.test.ts",

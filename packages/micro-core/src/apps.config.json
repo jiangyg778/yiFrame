@@ -4,7 +4,11 @@
     "displayName": "Main",
     "basePath": "/",
     "enabled": true,
-    "navigation": false
+    "navigation": false,
+    "standaloneAccessible": true,
+    "devFallbackToMainOrigin": false,
+    "smokeEnabled": true,
+    "description": "平台主应用，负责统一入口和代理聚合。"
   },
   {
     "name": "activity",
@@ -12,6 +16,10 @@
     "basePath": "/activity",
     "enabled": true,
     "navigation": true,
+    "standaloneAccessible": true,
+    "devFallbackToMainOrigin": true,
+    "smokeEnabled": true,
+    "description": "活动业务子应用示例。",
     "targetEnvVar": "MICRO_APP_ACTIVITY_URL",
     "defaultTarget": "http://localhost:3001"
   },
@@ -21,6 +29,10 @@
     "basePath": "/account",
     "enabled": true,
     "navigation": true,
+    "standaloneAccessible": true,
+    "devFallbackToMainOrigin": true,
+    "smokeEnabled": true,
+    "description": "账户业务子应用示例。",
     "targetEnvVar": "MICRO_APP_ACCOUNT_URL",
     "defaultTarget": "http://localhost:3002"
   }
