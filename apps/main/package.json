@@ -1,0 +1,28 @@
+{
+  "name": "@miro/main",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "NODE_ENV=production node server.js",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@miro/micro-core": "*",
+    "@miro/shared-ui": "*",
+    "@miro/shared-state": "*",
+    "@miro/shared-utils": "*",
+    "http-proxy": "^1.18.1",
+    "next": "^14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/http-proxy": "^1.17.14",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.7.0"
+  }
+}

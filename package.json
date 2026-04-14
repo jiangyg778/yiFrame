@@ -1,0 +1,30 @@
+{
+  "name": "miro-micro-frontend",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "dev:main": "npm run dev --workspace=apps/main",
+    "dev:activity": "npm run dev --workspace=apps/activity",
+    "dev:account": "npm run dev --workspace=apps/account",
+    "dev:all": "turbo dev --parallel",
+    "smoke:local": "node scripts/smoke-check.mjs",
+    "test:event-bus": "tsx --test scripts/tests/event-bus.test.ts",
+    "test:shared-state": "tsx --test scripts/tests/shared-state.test.ts",
+    "test:core": "npm run test:event-bus && npm run test:shared-state"
+  },
+  "devDependencies": {
+    "jsdom": "^29.0.2",
+    "tsx": "^4.21.0",
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}

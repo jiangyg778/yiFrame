@@ -1,0 +1,27 @@
+[
+  {
+    "name": "main",
+    "displayName": "Main",
+    "basePath": "/",
+    "enabled": true,
+    "navigation": false
+  },
+  {
+    "name": "activity",
+    "displayName": "Activity",
+    "basePath": "/activity",
+    "enabled": true,
+    "navigation": true,
+    "targetEnvVar": "MICRO_APP_ACTIVITY_URL",
+    "defaultTarget": "http://localhost:3001"
+  },
+  {
+    "name": "account",
+    "displayName": "Account",
+    "basePath": "/account",
+    "enabled": true,
+    "navigation": true,
+    "targetEnvVar": "MICRO_APP_ACCOUNT_URL",
+    "defaultTarget": "http://localhost:3002"
+  }
+]
