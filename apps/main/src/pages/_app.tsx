@@ -1,20 +1,24 @@
 import type { AppProps } from 'next/app';
 import { MicroLinkProvider, createClientRegistry, type SharedStateSnapshot } from '@miro/micro-core';
 import { SharedStateProvider } from '@miro/shared-state';
+import { AuthSnapshotProvider, type PublicUser } from '@miro/shared-ui';
 
 const clientRegistry = createClientRegistry();
 const currentApp = process.env.NEXT_PUBLIC_APP_NAME || 'main';
 
 type SharedAppProps = AppProps<{
   __sharedStateSnapshot?: Partial<SharedStateSnapshot>;
+  __authSnapshot?: PublicUser | null;
 }>;
 
 export default function App({ Component, pageProps }: SharedAppProps) {
   return (
     <SharedStateProvider initialSnapshot={pageProps.__sharedStateSnapshot}>
-      <MicroLinkProvider registry={clientRegistry} currentApp={currentApp}>
-        <Component {...pageProps} />
-      </MicroLinkProvider>
+      <AuthSnapshotProvider initialUser={pageProps.__authSnapshot ?? null}>
+        <MicroLinkProvider registry={clientRegistry} currentApp={currentApp}>
+          <Component {...pageProps} />
+        </MicroLinkProvider>
+      </AuthSnapshotProvider>
     </SharedStateProvider>
   );
 }

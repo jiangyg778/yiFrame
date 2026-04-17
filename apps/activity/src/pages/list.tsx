@@ -1,5 +1,5 @@
 import type { GetServerSideProps } from 'next';
-import { Header, Footer, Button } from '@miro/shared-ui';
+import { Header, Footer, Button, withAuthSnapshotServerSideProps } from '@miro/shared-ui';
 import { MicroLink } from '@miro/micro-core';
 import { useEmitEvent, useEventBus, withSharedStateServerSideProps } from '@miro/shared-state';
 import { useState } from 'react';
@@ -15,7 +15,7 @@ interface ActivityListProps {
 }
 
 export const getServerSideProps: GetServerSideProps<ActivityListProps> = withSharedStateServerSideProps(
-  async (ctx) => {
+  withAuthSnapshotServerSideProps<ActivityListProps>('activity', async (ctx) => {
     const activities: Activity[] = [
       { id: 1, title: '新用户注册奖励', status: 'active' },
       { id: 2, title: '春节限时活动', status: 'ended' },
@@ -27,7 +27,7 @@ export const getServerSideProps: GetServerSideProps<ActivityListProps> = withSha
         activities,
       },
     };
-  }
+  })
 );
 
 export default function ActivityListPage({ activities }: ActivityListProps) {

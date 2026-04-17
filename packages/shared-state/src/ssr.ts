@@ -20,7 +20,7 @@ export function getSharedStateServerSnapshot(
 }
 
 export function withSharedStateServerSideProps<
-  P extends Record<string, unknown> = Record<string, unknown>
+  P extends { [key: string]: any } = { [key: string]: any }
 >(
   handler?: GetServerSideProps<P>
 ): GetServerSideProps<P & SharedStatePageProps> {

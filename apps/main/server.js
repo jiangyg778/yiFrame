@@ -11,9 +11,18 @@ const dev = process.env.NODE_ENV !== 'production';
 const port = parseInt(process.env.PORT || '3000', 10);
 const proxyTimeout = parseInt(process.env.PROXY_TIMEOUT || '10000', 10);
 const enableLogging = process.env.PROXY_ENABLE_LOGGING !== 'false';
-// WS upgrade proxy is only needed for Next dev HMR. In production builds there
-// are no _next/webpack-hmr / __nextjs_original-stack sockets from sub apps.
-const enableWsProxy = dev && process.env.PROXY_DISABLE_WS !== 'true';
+
+// WS upgrade proxy is only needed to forward Next.js dev HMR (`_next/webpack-hmr`)
+// from the main origin to the correct sub-app dev server. In production builds
+// sub-apps don't emit HMR sockets, so we default to off there.
+//
+// Switch: PROXY_WS_PROXY
+//   'auto' (default) -> on in development, off in production
+//   'on'             -> force enable (useful if you proxy a remote dev server)
+//   'off'            -> force disable (fall back to directly hitting sub-app ports)
+const wsProxyMode = (process.env.PROXY_WS_PROXY || 'auto').toLowerCase();
+const enableWsProxy =
+  wsProxyMode === 'on' ? true : wsProxyMode === 'off' ? false : dev;
 
 const logger = createLogger(enableLogging);
 const registry = createRuntimeRegistry(process.env);
@@ -94,7 +103,9 @@ app
     server.listen(port, () => {
       logger.info(`Main app running at http://localhost:${port}`);
       logger.info(`Mode: ${dev ? 'development' : 'production'}`);
-      logger.info(`WS/HMR proxy: ${enableWsProxy ? 'enabled' : 'disabled'}`);
+      logger.info(
+        `WS/HMR proxy: ${enableWsProxy ? 'enabled' : 'disabled'} (PROXY_WS_PROXY=${wsProxyMode})`
+      );
       registry.forEach((appEntry) => {
         logger.info('Registered app', {
           name: appEntry.name,

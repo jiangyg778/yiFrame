@@ -1,5 +1,5 @@
 import type { GetServerSideProps } from 'next';
-import { Header, Footer, Button } from '@miro/shared-ui';
+import { Header, Footer, Button, withAuthSnapshotServerSideProps } from '@miro/shared-ui';
 import { MicroLink } from '@miro/micro-core';
 import { useTheme, useLocale, withSharedStateServerSideProps } from '@miro/shared-state';
 
@@ -12,7 +12,7 @@ interface ProfileProps {
 }
 
 export const getServerSideProps: GetServerSideProps<ProfileProps> = withSharedStateServerSideProps(
-  async (ctx) => {
+  withAuthSnapshotServerSideProps<ProfileProps>('account', async (ctx) => {
     const user = {
       name: 'Demo User',
       email: 'demo@miro.example',
@@ -24,7 +24,7 @@ export const getServerSideProps: GetServerSideProps<ProfileProps> = withSharedSt
         user,
       },
     };
-  }
+  })
 );
 
 export default function ProfilePage({ user }: ProfileProps) {

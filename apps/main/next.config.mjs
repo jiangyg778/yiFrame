@@ -8,6 +8,7 @@ const nextConfig = {
   },
   transpilePackages: [
     '@miro/micro-core',
+    '@miro/request-core',
     '@miro/shared-ui',
     '@miro/shared-state',
     '@miro/shared-utils',

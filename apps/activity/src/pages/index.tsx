@@ -1,5 +1,5 @@
 import type { GetServerSideProps } from 'next';
-import { Header, Footer, Button } from '@miro/shared-ui';
+import { Header, Footer, Button, AuthDemo, withAuthSnapshotServerSideProps } from '@miro/shared-ui';
 import { MicroLink } from '@miro/micro-core';
 import { useTheme, useLocale, withSharedStateServerSideProps } from '@miro/shared-state';
 
@@ -8,13 +8,13 @@ interface ActivityHomeProps {
 }
 
 export const getServerSideProps: GetServerSideProps<ActivityHomeProps> = withSharedStateServerSideProps(
-  async (ctx) => {
+  withAuthSnapshotServerSideProps<ActivityHomeProps>('activity', async (ctx) => {
     return {
       props: {
         serverTime: new Date().toISOString(),
       },
     };
-  }
+  })
 );
 
 export default function ActivityHome({ serverTime }: ActivityHomeProps) {
@@ -32,6 +32,8 @@ export default function ActivityHome({ serverTime }: ActivityHomeProps) {
         <p style={{ color: '#64748b', marginBottom: '24px' }}>
           这是一个独立的 Next.js 子应用，通过路由聚合接入主应用。
         </p>
+
+        <AuthDemo appName="activity" />
 
         <section style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>

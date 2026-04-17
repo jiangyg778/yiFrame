@@ -1,5 +1,6 @@
 import React from 'react';
 import { MicroLink, createClientRegistry, getNavigationItems } from '@miro/micro-core';
+import { AuthMenu } from './AuthMenu';
 
 export interface HeaderProps {
   currentApp?: string;
@@ -49,8 +50,11 @@ export function Header({ currentApp }: HeaderProps) {
           ))}
         </nav>
       </div>
-      <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-        {currentApp ? `Current: ${currentApp}` : 'Main'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+          {currentApp ? `Current: ${currentApp}` : 'Main'}
+        </span>
+        <AuthMenu />
       </div>
     </header>
   );

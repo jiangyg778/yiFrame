@@ -1,6 +1,14 @@
-import { Header, Footer, Button } from '@miro/shared-ui';
+import type { GetServerSideProps } from 'next';
+import { Header, Footer, Button, withAuthSnapshotServerSideProps } from '@miro/shared-ui';
 import { MicroLink } from '@miro/micro-core';
-import { useTheme, useLocale } from '@miro/shared-state';
+import { useTheme, useLocale, withSharedStateServerSideProps } from '@miro/shared-state';
+
+// Opt this page into SSR so the Header's AuthMenu can render the correct
+// logged-in state on the very first frame. This converts the main home from
+// ASO to SSR — the cost is one extra /api/auth/me round-trip per request.
+export const getServerSideProps: GetServerSideProps = withSharedStateServerSideProps(
+  withAuthSnapshotServerSideProps('main')
+);
 
 export default function HomePage() {
   const [theme, setTheme] = useTheme();

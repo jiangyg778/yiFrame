@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@miro/micro-core": "*",
+    "@miro/request-core": "*",
     "@miro/shared-state": "*",
     "@miro/shared-ui": "*",
     "@miro/shared-utils": "*",
