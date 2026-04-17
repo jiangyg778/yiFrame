@@ -293,7 +293,7 @@ SKIP_ACCOUNT_CHECKS=true CHECK_FALLBACK_PATH=/account/profile npm run smoke:loca
 
 ## 第五轮工程化加固（本轮完成）
 
-这一轮只做「最值钱的 4 件事」，不再扩张架构：
+
 
 1. **消灭 registry 双实现**：纯逻辑收敛到 [app-registry.runtime.js]，TS/JS/脚本全部复用同一份。
 2. **主应用代理支持 WebSocket / HMR**：开发态子应用走主应用 origin 时 Next HMR 不再失效。
