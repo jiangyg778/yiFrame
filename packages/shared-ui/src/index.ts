@@ -24,3 +24,11 @@ export type { AuthSnapshotProviderProps } from './auth-snapshot';
 
 export { resolveAuthSnapshot, withAuthSnapshotServerSideProps } from './auth-ssr';
 export type { AuthSnapshotPageProps } from './auth-ssr';
+
+export { LocaleSwitcher } from './LocaleSwitcher';
+export type { LocaleSwitcherProps } from './LocaleSwitcher';
+export { ThemeSwitcher } from './ThemeSwitcher';
+export type { ThemeSwitcherProps } from './ThemeSwitcher';
+export { ThemeRuntime } from './ThemeRuntime';
+export { getThemeTokens, themeTokens } from './theme-tokens';
+export type { ThemeName, ThemeTokens } from './theme-tokens';

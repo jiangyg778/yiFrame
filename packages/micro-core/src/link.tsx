@@ -5,6 +5,7 @@ import NextLink from 'next/link';
 import { useRouter as useNextRouter } from 'next/router';
 import type { MicroRegistry } from './registry';
 import { resolveNavigationTarget, shouldHandleAsNativeNavigation, type NavigationMode } from './navigation';
+import { SUPPORTED_LOCALES, type SupportedLocale } from './locales';
 
 export interface MicroLinkProps
   extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
@@ -19,6 +20,9 @@ export interface MicroLinkProps
 interface MicroLinkContextValue {
   registry: MicroRegistry;
   currentApp: string;
+  /** Active locale (cookie / URL). Propagated into navigation so generated
+   *  public hrefs carry the `/zh-cn` or `/en` prefix automatically. */
+  locale?: SupportedLocale;
 }
 
 export const MicroLinkContext = React.createContext<MicroLinkContextValue>({
@@ -29,9 +33,13 @@ export const MicroLinkContext = React.createContext<MicroLinkContextValue>({
 export function MicroLinkProvider({
   registry,
   currentApp,
+  locale,
   children,
 }: MicroLinkContextValue & { children: React.ReactNode }) {
-  const value = useMemo(() => ({ registry, currentApp }), [registry, currentApp]);
+  const value = useMemo(
+    () => ({ registry, currentApp, locale }),
+    [registry, currentApp, locale]
+  );
   return <MicroLinkContext.Provider value={value}>{children}</MicroLinkContext.Provider>;
 }
 
@@ -45,8 +53,13 @@ export function MicroLink({
   prefetch,
   ...rest
 }: MicroLinkProps) {
-  const { registry, currentApp } = React.useContext(MicroLinkContext);
+  const { registry, currentApp, locale: contextLocale } = React.useContext(MicroLinkContext);
   const nextRouter = useNextRouter();
+
+  // `locale === false` opts out of locale-aware routing for this single link
+  // (e.g. external absolute URLs that already encode their own locale).
+  const effectiveLocale = locale === false ? undefined : locale ?? contextLocale;
+  const effectiveLocales = nextRouter.locales ?? SUPPORTED_LOCALES;
 
   const resolved = useMemo(
     () =>
@@ -56,12 +69,12 @@ export function MicroLink({
           registry,
           currentApp,
           currentPathname: nextRouter.asPath,
-          locales: nextRouter.locales,
-          locale,
+          locales: effectiveLocales,
+          locale: effectiveLocale,
         },
         mode
       ),
-    [href, registry, currentApp, nextRouter.asPath, nextRouter.locales, locale, mode]
+    [href, registry, currentApp, nextRouter.asPath, effectiveLocales, effectiveLocale, mode]
   );
 
   const handleReloadClick = useCallback(

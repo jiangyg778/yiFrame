@@ -1,5 +1,6 @@
 /**
  * @type {import('next').NextConfig}
+ * See apps/activity/next.config.mjs for why sub-apps stay locale-agnostic.
  */
 const nextConfig = {
   reactStrictMode: true,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { EventBus } from '@miro/micro-core';
+import { EVENT_AUTH_UNAUTHORIZED } from '@miro/request-core';
 import {
   EVENT_AUTH_LOGIN,
   EVENT_AUTH_LOGOUT,
@@ -70,11 +71,19 @@ export function AuthMenu() {
       if (next) setUser(next);
     });
     const offLogout = EventBus.on(EVENT_AUTH_LOGOUT, () => setUser(null));
+    // Any non-silent 401/403 from request-core means the server no longer
+    // recognizes this session (e.g. demo in-memory store wiped on restart,
+    // session expired in another tab). Clear the Header immediately so it
+    // stops being a stale "logged-in" residue.
+    const offUnauthorized = EventBus.on(EVENT_AUTH_UNAUTHORIZED, () => {
+      setUser(null);
+    });
 
     return () => {
       alive = false;
       offLogin();
       offLogout();
+      offUnauthorized();
     };
   }, []);
 

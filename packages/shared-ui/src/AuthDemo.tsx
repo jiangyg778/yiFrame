@@ -32,7 +32,12 @@ export function AuthDemo({ appName }: AuthDemoProps) {
     setResult('loading...');
     const client = getBrowserRequestClient({ appName, baseUrl: '' });
     try {
-      const data = await client.get<unknown>(path, { silent401: true });
+      // NOTE: we intentionally let 401 bubble through the normal unauthorized
+      // pipeline here. AuthMenu listens for EVENT_AUTH_UNAUTHORIZED and will
+      // reset Header state so the "logged-in Header + 401 API" mismatch
+      // (e.g. after the in-memory demo store was wiped on server restart)
+      // clears up as soon as the user interacts with a protected endpoint.
+      const data = await client.get<unknown>(path);
       setResult(`✅ ${path}\n\n${JSON.stringify(data, null, 2)}`);
     } catch (error) {
       if (isAppRequestError(error)) {

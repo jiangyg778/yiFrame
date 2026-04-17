@@ -4,6 +4,7 @@ import { useRouter as useNextRouter } from 'next/router';
 import { useContext, useCallback, useMemo } from 'react';
 import { MicroLinkContext } from './link';
 import { resolveNavigationTarget, type NavigationMode, type ResolvedNavigationTarget } from './navigation';
+import { SUPPORTED_LOCALES } from './locales';
 
 export interface NavigateOptions {
   mode?: NavigationMode;
@@ -23,7 +24,8 @@ export interface MicroRouter {
 
 export function useMicroRouter(): MicroRouter {
   const nextRouter = useNextRouter();
-  const { registry, currentApp } = useContext(MicroLinkContext);
+  const { registry, currentApp, locale: contextLocale } = useContext(MicroLinkContext);
+  const effectiveLocales = nextRouter.locales ?? SUPPORTED_LOCALES;
 
   const resolveTarget = useCallback(
     (url: string, options?: NavigateOptions) =>
@@ -33,12 +35,12 @@ export function useMicroRouter(): MicroRouter {
           registry,
           currentApp,
           currentPathname: nextRouter.asPath,
-          locales: nextRouter.locales,
-          locale: options?.locale,
+          locales: effectiveLocales,
+          locale: options?.locale === false ? undefined : options?.locale ?? contextLocale,
         },
         options?.mode ?? 'auto'
       ),
-    [registry, currentApp, nextRouter.asPath, nextRouter.locales]
+    [registry, currentApp, nextRouter.asPath, effectiveLocales, contextLocale]
   );
 
   const push = useCallback(

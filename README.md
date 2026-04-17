@@ -488,6 +488,12 @@ curl -s -b /tmp/c.jar http://localhost:3000/api/auth/me   # => 401
 - `apps/main/src/pages/404.tsx`、`apps/account/src/pages/index.tsx`、`apps/account/src/pages/settings.tsx`、`apps/futures` 内部静态页等依然是 ASO；它们的 AuthMenu 首帧仍走 "null → effect fetch" 老路径
 - 这是刻意的取舍：只为"跨应用 reload 着陆页"付出 SSR 成本（一次 `/api/auth/me` 约 2-5ms），其他页面不动
 
+**401 自动同步 Header**：
+
+任何页面对受保护接口发起的请求（AuthDemo 的按钮、业务接口等）只要拿到 **401/403** 且未显式传 `silent401`，request-core 就会广播 `EVENT_AUTH_UNAUTHORIZED`。`AuthMenu` 订阅了这个事件，会立刻把 Header 切回"登录/注册"。
+
+这一条主要是修正 demo 场景下的一个典型残影：主应用进程重启 → 内存 session 丢 → 浏览器仍有旧 cookie → Header 因为 SSR snapshot 还残留「已登录」。只要用户后续点任何受保护按钮，UI 就会自动校正。不需要整页刷新。
+
 **不会成立的情况**：
 
 - MAIN_APP_ORIGIN 未配置、或主应用不可达 → `resolveAuthSnapshot` 超时（2s）返回 `null`，不影响 SSR 成功；首屏回退 CSR 策略

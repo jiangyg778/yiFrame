@@ -31,6 +31,16 @@ export {
 export { MicroLink, MicroLinkProvider, MicroLinkContext } from './link';
 export type { MicroLinkProps } from './link';
 
+export {
+  SUPPORTED_LOCALES,
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  normalizeLocale,
+  stripLocalePrefix,
+  replaceLocaleInPath,
+} from './locales';
+export type { SupportedLocale, StripLocaleResult } from './locales';
+
 export { useMicroRouter } from './router';
 export type { MicroRouter, NavigateOptions } from './router';
 
