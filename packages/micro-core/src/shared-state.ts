@@ -391,6 +391,104 @@ export function destroySharedStateRuntime(): void {
   syncMode = null;
 }
 
+/**
+ * Cross-origin boundary for shared state.
+ *
+ * Shared state in yiFrame is built on `document.cookie`, `localStorage` and
+ * `BroadcastChannel`. All three are **isolated per origin** by the browser.
+ *
+ * - Same-origin path (recommended): users hit the main app origin (e.g.
+ *   `http://localhost:3000/activity`). Main proxies to sub-apps, so cookies,
+ *   localStorage and BroadcastChannel are fully shared across apps.
+ *
+ * - Multi-origin path (dev convenience only): users hit a sub app directly
+ *   (e.g. `http://localhost:3001/activity`). In that case:
+ *     * cookie-backed keys (locale, theme) are per-port, do NOT sync with main
+ *     * localStorage-backed keys (currencyRates, assetVisibility) are per-port
+ *     * BroadcastChannel / storage sync only reach tabs on the same port
+ *
+ *   The existing `devFallbackToMainOrigin` navigation helper does NOT fix this,
+ *   it only fixes cross-app link URLs. State sync will still be split.
+ *
+ * This helper surfaces the boundary at runtime so developers do not silently
+ * debug "why isn't my shared state syncing" when testing on :3001 directly.
+ */
+export interface SharedStateOriginBoundaryReport {
+  isBrowser: boolean;
+  currentOrigin: string | null;
+  mainAppOrigin: string | null;
+  matchesMainOrigin: boolean;
+  /**
+   * True when we can be confident the full shared-state contract is in effect.
+   * False when the user is likely hitting a sub-app origin directly.
+   */
+  sharedStateFullyAvailable: boolean;
+}
+
+let sharedStateBoundaryWarned = false;
+
+export function getSharedStateOriginBoundary(): SharedStateOriginBoundaryReport {
+  const browser = isBrowser();
+  const currentOrigin = browser ? window.location.origin : null;
+
+  const configuredMainOrigin =
+    (typeof process !== 'undefined' && process?.env?.NEXT_PUBLIC_MAIN_APP_ORIGIN) ||
+    (typeof process !== 'undefined' && process?.env?.MAIN_APP_ORIGIN) ||
+    null;
+
+  let mainAppOrigin: string | null = null;
+  if (configuredMainOrigin) {
+    try {
+      mainAppOrigin = new URL(configuredMainOrigin).origin;
+    } catch {
+      mainAppOrigin = null;
+    }
+  }
+
+  // If main origin isn't configured, we can't meaningfully compare. Assume
+  // deployment is same-origin through the proxy and don't warn.
+  const matchesMainOrigin =
+    !browser || !mainAppOrigin ? true : currentOrigin === mainAppOrigin;
+
+  return {
+    isBrowser: browser,
+    currentOrigin,
+    mainAppOrigin,
+    matchesMainOrigin,
+    sharedStateFullyAvailable: matchesMainOrigin,
+  };
+}
+
+/**
+ * Call once during app bootstrap (e.g. in `_app.tsx`) to emit a dev-only
+ * warning when the current origin cannot share state with the main app.
+ *
+ * No-op in production and when MAIN_APP_ORIGIN isn't configured.
+ */
+export function warnIfSharedStateBoundaryViolated(): void {
+  if (!isBrowser()) return;
+  if (sharedStateBoundaryWarned) return;
+
+  const isProd =
+    typeof process !== 'undefined' && process?.env?.NODE_ENV === 'production';
+  if (isProd) return;
+
+  const report = getSharedStateOriginBoundary();
+  if (!report.mainAppOrigin) return;
+  if (report.matchesMainOrigin) return;
+
+  sharedStateBoundaryWarned = true;
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[SharedState] You are on ${report.currentOrigin} but MAIN_APP_ORIGIN is ` +
+      `${report.mainAppOrigin}. Cookies / localStorage / BroadcastChannel are ` +
+      `per-origin in the browser, so cross-app shared state (locale, theme, ` +
+      `currencyRates, assetVisibility) will NOT sync between this sub-app and ` +
+      `the main app. Navigate through ${report.mainAppOrigin} to validate the ` +
+      `full shared-state contract.`
+  );
+}
+
 export function hydrateSharedStateSnapshot(): Partial<SharedStateSnapshot> {
   const snapshot: Partial<SharedStateSnapshot> = {};
 

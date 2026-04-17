@@ -30,6 +30,13 @@ function createProxyLayer({
       message: error.message || 'Proxy request failed.',
     });
 
+    // WS upgrade errors give us a Socket in `res`, not an HTTP ServerResponse.
+    // In that case we leave the socket handling to the ws() callback in
+    // server.js — trying to writeHead() on a raw socket would throw.
+    if (!res || typeof res.writeHead !== 'function') {
+      return;
+    }
+
     renderProxyError(
       res,
       req.__traceId || generateTraceId(),

@@ -18,7 +18,8 @@
     "smoke:local": "node scripts/smoke-check.mjs",
     "test:event-bus": "tsx --test scripts/tests/event-bus.test.ts",
     "test:shared-state": "tsx --test scripts/tests/shared-state.test.ts",
-    "test:core": "npm run test:event-bus && npm run test:shared-state"
+    "test:core": "npm run test:event-bus && npm run test:shared-state",
+    "dev:futures": "npm run dev --workspace=apps/futures"
   },
   "devDependencies": {
     "jsdom": "^29.0.2",

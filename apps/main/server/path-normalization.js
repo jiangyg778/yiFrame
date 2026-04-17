@@ -1,16 +1,20 @@
-function normalizeBasePath(basePath) {
-  if (!basePath || basePath === '/') return '/';
-  const normalized = basePath.startsWith('/') ? basePath : `/${basePath}`;
-  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
-}
+// path-normalization helpers that are unique to the proxy layer.
+// The shared helpers (normalizeBasePath / isConflictingPrefix) are re-exported
+// from the registry runtime to avoid drift — do not re-implement them here.
 
-function isConflictingPrefix(left, right) {
-  if (left === '/' || right === '/') return false;
-  return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
-}
+const {
+  normalizeBasePath,
+  isConflictingPrefix,
+} = require('../../../packages/micro-core/src/app-registry.runtime');
 
 function extractPathname(url) {
-  return new URL(url || '/', 'http://localhost').pathname;
+  try {
+    return new URL(url || '/', 'http://localhost').pathname;
+  } catch {
+    const raw = url || '/';
+    const qIndex = raw.indexOf('?');
+    return qIndex === -1 ? raw : raw.slice(0, qIndex);
+  }
 }
 
 function normalizeLegacyUrl(url) {

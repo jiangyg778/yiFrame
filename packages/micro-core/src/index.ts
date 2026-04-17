@@ -42,6 +42,7 @@ export {
   getDefaultSharedStateSnapshot,
   getSharedState,
   getSharedStateDefinition,
+  getSharedStateOriginBoundary,
   getSharedStateSnapshotFromCookieHeader,
   hydrateSharedStateSnapshot,
   listSharedStateDefinitions,
@@ -49,12 +50,14 @@ export {
   setSharedState,
   onSharedStateChange,
   validateSharedStateDefinitions,
+  warnIfSharedStateBoundaryViolated,
 } from './shared-state';
 export type {
   SharedStorageType,
   SharedStateDefinition,
   SharedStateKey,
   SharedStateChangeHandler,
+  SharedStateOriginBoundaryReport,
   SharedStateShape,
   SharedStateSnapshot,
 } from './shared-state';

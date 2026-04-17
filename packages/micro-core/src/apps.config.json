@@ -35,5 +35,18 @@
     "description": "账户业务子应用示例。",
     "targetEnvVar": "MICRO_APP_ACCOUNT_URL",
     "defaultTarget": "http://localhost:3002"
+  },
+  {
+    "name": "futures",
+    "displayName": "Futures",
+    "basePath": "/futures",
+    "enabled": true,
+    "navigation": true,
+    "standaloneAccessible": true,
+    "devFallbackToMainOrigin": true,
+    "smokeEnabled": true,
+    "description": "Futures 子应用（由 create:app 生成）。",
+    "targetEnvVar": "MICRO_APP_FUTURES_URL",
+    "defaultTarget": "http://localhost:3003"
   }
 ]

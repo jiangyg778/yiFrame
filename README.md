@@ -61,7 +61,7 @@ scripts/
 
 唯一 app 源数据：
 
-[apps.config.json](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/apps.config.json)
+[apps.config.json]
 
 当前每个 app 至少包含这些字段：
 
@@ -92,9 +92,9 @@ scripts/
 
 相关实现：
 
-- [app-registry.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/app-registry.ts)
-- [validate.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/scripts/registry/validate.ts)
-- [report.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/scripts/registry/report.ts)
+- [app-registry.ts]
+- [validate.ts]
+- [report.ts]
 
 运行校验：
 
@@ -291,8 +291,113 @@ SKIP_ACCOUNT_CHECKS=true CHECK_FALLBACK_PATH=/account/profile npm run smoke:loca
 - 是否加入更细粒度 smoke 场景
 - 部署环境里的真实目标地址
 
+## 第五轮工程化加固（本轮完成）
+
+这一轮只做「最值钱的 4 件事」，不再扩张架构：
+
+1. **消灭 registry 双实现**：纯逻辑收敛到 [app-registry.runtime.js]，TS/JS/脚本全部复用同一份。
+2. **主应用代理支持 WebSocket / HMR**：开发态子应用走主应用 origin 时 Next HMR 不再失效。
+3. **smoke-check 完全 registry 驱动**：app 列表自动派生，buildId 从页面 `__NEXT_DATA__` 动态解析，不再写死 `development`。
+4. **多 origin 下 shared-state 边界**：新增 `warnIfSharedStateBoundaryViolated()` + `getSharedStateOriginBoundary()`，dev 直连子应用端口时主动 `console.warn`。
+
+### Registry 单一事实源
+
+- 纯运行时逻辑：[app-registry.runtime.js](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/app-registry.runtime.js)
+- 类型声明：[app-registry.runtime.d.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/app-registry.runtime.d.ts)
+- TS 门面（零实现）：[app-registry.ts](/Users/xiaofei/Downloads/work/Study/yiFrame/packages/micro-core/src/app-registry.ts)
+
+调用链现在是单向的：
+
+```text
+apps.config.json
+        │
+        ▼
+app-registry.runtime.js ──┬─► apps/main/server.js      (require, Node)
+                          ├─► apps/main/server/*.js    (require, Node)
+                          ├─► scripts/smoke-check.mjs  (createRequire, ESM)
+                          └─► packages/micro-core/src/app-registry.ts
+                                     │
+                                     ▼
+                               navigation / link / router / registry
+```
+
+删除的重复逻辑：
+
+- `apps/main/server/app-resolution.js` 里的 `validateRegistry` / `matchApp` / 默认值填充
+- `apps/main/server/path-normalization.js` 里的 `normalizeBasePath` / `isConflictingPrefix`
+- `packages/micro-core/src/app-registry.ts` 里的 200+ 行 TS 实现（现在只剩 re-export）
+
+### WebSocket / HMR 代理
+
+- `apps/main/server.js` 注册了 `server.on('upgrade', ...)`
+- 使用已有 `http-proxy` 的 `proxy.ws(req, socket, head, { target })`
+- 归属识别：和 HTTP 一样按 `pathname` 走 `matchApp`，命中子应用时转发，否则 fallthrough 给 Next 自身
+- 仅开发态启用（`NODE_ENV !== 'production'`），可用 `PROXY_DISABLE_WS=true` 关闭
+- `proxy.on('error', ...)` 对 WS 情况做了 `writeHead` 守卫，不会对 raw socket 调 HTTP 响应 API
+
+验证方式：
+
+```bash
+npm run dev:activity
+npm run dev:main
+# 打开 http://localhost:3000/activity
+# 修改 apps/activity/src/pages/index.tsx
+# 终端会看到 [ProxyServer] Proxying WS upgrade ... activity
+# 浏览器无需硬刷新即可看到改动
+```
+
+### 真·registry 驱动的 smoke-check
+
+- app 列表直接来自 `getSmokeTargetEntries()`，新增 app 只要 `enabled: true && smokeEnabled: true`，smoke 就会自动覆盖
+- `/_next/data/<buildId>/<page>.json` 的 `<buildId>` 与 `<page>` 都从页面 HTML 里的 `__NEXT_DATA__` 解析
+- 只有页面声明了 `getStaticProps` / `getServerSideProps`（`gsp` 或 `gssp` 为真）才会检查 data 线路，否则显式 `skip`
+- chunk 线路先试 `chunks/main.js`，prod 下 hash 化时回退到 `_buildManifest.js`
+- 失败输出统一格式：`app=... lane=... url=... message=...`
+
+相关实现：
+
+- [smoke-check.mjs](/Users/xiaofei/Downloads/work/Study/yiFrame/scripts/smoke-check.mjs)
+
+### 多 origin 下 shared-state 的边界
+
+**结论**：
+
+| 访问方式 | 示例 URL | shared-state 是否完整生效 |
+| --- | --- | --- |
+| 经主应用代理（推荐） | `http://localhost:3000/activity` | ✅ 完全生效 |
+| 直连子应用端口（开发便利） | `http://localhost:3001/activity` | ❌ 不与主应用同步 |
+
+原因：`document.cookie` / `localStorage` / `BroadcastChannel` 在浏览器侧按 **origin** 隔离，不同端口即不同 origin。`devFallbackToMainOrigin` 只修跨应用导航的 URL，**不会**修状态同步。
+
+受影响的 key：
+
+- `locale`（cookie）
+- `theme`（cookie）
+- `currencyRates`（localStorage）
+- `assetVisibility`（localStorage）
+
+本轮的收口方式（不引入 postMessage/iframe 桥，保持最小）：
+
+- 新增 `warnIfSharedStateBoundaryViolated()`：dev 且 `MAIN_APP_ORIGIN` 已配置、且当前 origin 与之不匹配时，浏览器 console 打印一条 `[SharedState]` 警告
+- 新增 `getSharedStateOriginBoundary()`：返回结构化报告，供业务代码做自定义处理
+- 各子应用 `_app.tsx` 在客户端启动时调用一次 `warnIfSharedStateBoundaryViolated()`
+- 生产环境与未配置 `MAIN_APP_ORIGIN` 时自动 no-op，避免误报
+
+验证方式：
+
+```bash
+export MAIN_APP_ORIGIN=http://localhost:3000
+npm run dev:activity   # 监听 3001
+# 直连打开 http://localhost:3001/activity
+# 浏览器 console 看到：
+# [SharedState] You are on http://localhost:3001 but MAIN_APP_ORIGIN is http://localhost:3000 ...
+```
+
 ## 当前仍保留的限制
 
 1. `create:app` 目前是最小脚手架，不会顺手生成完整业务页、测试和部署配置。
 2. registry 的自动导出目前以 runtime 函数和命令行报告为主，还没有额外落盘成静态制品。
 3. 开发态跨应用导航兜底依赖 `MAIN_APP_ORIGIN`，如果本地没配，子应用直连时仍会回到当前 origin。
+4. 多 origin 下的 shared-state 仍然是「边界明确 + 警告」而不是「跨 origin 同步」。如果业务要求必须在直连子应用时同步状态，需要独立一轮引入 postMessage / iframe 桥方案。
+5. 生产代理层未加 `X-Forwarded-*` 头注入、重试、断路、WS 以外的可观测性指标，这些都不在本轮范围。
+6. App Router 兼容仍未做，`MicroLink` / `useMicroRouter` 仍绑定 Pages Router。

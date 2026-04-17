@@ -8,7 +8,7 @@ import {
 import { SharedStateProvider } from '@miro/shared-state';
 
 const clientRegistry = createClientRegistry();
-const currentApp = process.env.NEXT_PUBLIC_APP_NAME || 'activity';
+const currentApp = 'futures';
 
 if (typeof window !== 'undefined') {
   warnIfSharedStateBoundaryViolated();
